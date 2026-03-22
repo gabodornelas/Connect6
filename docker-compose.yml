@@ -1,0 +1,22 @@
+services:
+  servidor:
+    image: lrprll/connect6-server:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - game-network
+
+  agentegabornelas:
+    build: .
+    restart: always
+    environment:
+      - SERVER_ADDR=servidor:50051
+      - TEAM_NAME=agentegabornelas
+    depends_on:
+      - servidor
+    networks:
+      - game-network
+
+networks:
+  game-network:
+    driver: bridge

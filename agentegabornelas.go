@@ -54,14 +54,9 @@ func playGame(addr, teamName string) {
 
 				stones := []*pb.Point{}
 				
-				// Estrategias
 				for int32(len(stones)) < state.StonesRequired {
-					if state.MyColor == pb.PlayerColor_BLACK {
-						stones = append(stones, estrategias.JugarNegras(state, state.StonesRequired - int32(len(stones)))...)
-					}else{
-						stones = append(stones, estrategias.JugarBlancas(state, state.StonesRequired - int32(len(stones)))...)
-					}
-					if state.StonesRequired - int32(len(stones)) == 1{
+					stones = append(stones, estrategias.Jugar(state, state.StonesRequired - int32(len(stones)))...)
+					if int32(len(stones)) < 2{
 						state.Board[stones[0].X].Cells[stones[0].Y] = state.MyColor
 					}
 				}
@@ -99,7 +94,7 @@ func main() {
 
 	teamName := os.Getenv("TEAM_NAME")
 	if teamName == "" {
-		teamName = "Bot_Aleatorio_Go"
+		teamName = "GabrielBot"
 	}
 
 	// Loop de reconexión: después de cada partida, reconectar

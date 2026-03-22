@@ -1,0 +1,16 @@
+INSTALACIÓN
+
+    Debe tener instalado Docker, Docker Compose, protoc y go (v1.24).
+    Plugins de gRPC para Go
+
+EJECUCIÓN
+    Ya esta en el paquete la carpeta pb, sin embargo se puede rectificar haciendo
+    
+    Para acomodar la variable de entorno a la sesion actual:
+        export PATH="$PATH:$(go env GOPATH)/bin"
+    
+    Para crear el pb 
+        protoc --go_out=. --go-grpc_out=. connect6.proto
+    
+    Para ejecutar el programa:
+        docker compose up --build
