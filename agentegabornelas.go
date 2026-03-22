@@ -58,6 +58,8 @@ func playGame(addr, teamName string) {
 					stones = append(stones, estrategias.Jugar(state, state.StonesRequired - int32(len(stones)))...)
 					if int32(len(stones)) < 2{
 						state.Board[stones[0].X].Cells[stones[0].Y] = state.MyColor
+					}else{
+						state.Board[stones[1].X].Cells[stones[1].Y] = state.MyColor
 					}
 				}
 				// Enviar movimiento

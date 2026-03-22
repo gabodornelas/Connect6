@@ -54,7 +54,7 @@ func (Tree *Tree) MCTS(estadoActual *pb.GameState, miColor pb.PlayerColor, turno
 	}
 
 	// MCTS
-	tiempo := time.Now().Add(4500*time.Millisecond)
+	tiempo := time.Now().Add(4000*time.Millisecond)
 	for time.Now().Before(tiempo) {
 
 		if Tree.Root.Completado {
@@ -96,6 +96,9 @@ func (Tree *Tree) MCTS(estadoActual *pb.GameState, miColor pb.PlayerColor, turno
 	
 	// Elegir el mejor movimiento (heuristica)
 	mejorHijo := seleccionarHijoMasVisitado(Tree.Root)
+	if mejorHijo == nil {
+        return []*pb.Point{{X: 0, Y: 0}}// Si no hay hijos (tablero 100% lleno), mandamos una coordenada vacía de emergencia
+    }
 	// Actualizamos la raíz a la jugada que vamos a hacer
 	Tree.Root = mejorHijo
 	Tree.Root.Padre = nil
@@ -204,7 +207,7 @@ func retropropagar(nodo *Nodo, resultado float64) {
 // Auxiliares--------------------------------------------------------------------------------------------------------------------------------
 // Funcion que verifica los espacios en los que (inteligentemente) deberiamos jugar
 func espaciosLibres(estado *pb.GameState, colorActual pb.PlayerColor, turnos int32) []*pb.Point {
-	var mate, jaques, ataque1, ataque2, ataque3, ataque4, defensa, pre_jaque []*pb.Point
+	var espaciosVacios, mate, jaques, ataque1, ataque2, ataque3, ataque4, defensa, pre_jaque []*pb.Point
 	//colorEnVentaja := colorActual
 	//lineaMasLarga := 0
 	for x := int32(0); x < 19; x++ {
@@ -230,7 +233,7 @@ func espaciosLibres(estado *pb.GameState, colorActual pb.PlayerColor, turnos int
 				ataque4 = append(ataque4, linead[1]...)
 				ataque4 = append(ataque4, lineai[1]...)
 				if turnos > 1 && len(ataque4) > 0 {
-					return ataque4 // es como jaque a favor porque queda otro turno
+					return ataque4 // Como jaque a favor porque queda otro turno
 				}
 				ataque3 = append(ataque3, linead[2]...)
 				
@@ -246,31 +249,44 @@ func espaciosLibres(estado *pb.GameState, colorActual pb.PlayerColor, turnos int
 					ataque1 = append(ataque1, &pb.Point{X: x, Y: y})
 				}	
 				// Defensa
-				// Nos interesa colocar fichas junto a las fichas del rival o separadas por un espacio
+				// Nos interesa colocar fichas junto a las fichas del rival
 				derecha = X_enLinea(x,y,estado,ColorOponente(colorActual),2,[][2]int{{1, 0}, {0, 1}, {1, 1}, {-1, 1}})
 				izquierda = X_enLinea(x,y,estado,ColorOponente(colorActual),2,[][2]int{{-1, 0}, {0, -1}, {-1, -1}, {1, -1}})
 				if 	derecha[0] == 1 || derecha[1] == 1 || derecha[2] == 1 || derecha[3] == 1 ||
 					izquierda[0] == 1 || izquierda[1] == 1 || izquierda[2] == 1 || izquierda[3] == 1 {
 					defensa = append(defensa, &pb.Point{X: x, Y: y})
-				}	
+				}
+                espaciosVacios = append(espaciosVacios, &pb.Point{X: x, Y: y})
 			}
 		}
 	}
 	if len(jaques) > 0 {
 		return jaques // Solo considera para trancar el jaque en contra
 	}
-	if len(ataque4) > 0 {
-		return ataque4 // le doy prioridad a las lineas de 4
-	}else if len(ataque3) > 0 {
-		return ataque3 // le doy prioridad a las lineas de 3
-	}else if len(ataque2) > 0 {
-		return ataque2 // le doy prioridad a las lineas de 2
-	}else if len(pre_jaque) > 1 {
-		return pre_jaque // Si hay mas de una linea de 3, eso quiere decir que mi rival puede hacer 2 lineas de 4 en la siguiente
-	}else if len(ataque1) > 0 {
-		return ataque1 // le doy prioridad a las lineas de 1
+	if len(pre_jaque) > 1 {
+		return pre_jaque // Si hay mas de una linea de 3 del rival, eso quiere decir que mi rival puede hacer 2 lineas de 4 en la siguiente
 	}
-	return defensa
+	ataque3 = filtrarAtaques(ataque4, ataque3)
+	ataque2 = filtrarAtaques(ataque4, ataque2)
+	ataque2 = filtrarAtaques(ataque3, ataque2)
+	ataque1 = filtrarAtaques(ataque4, ataque1)
+	ataque1 = filtrarAtaques(ataque3, ataque1)
+	ataque1 = filtrarAtaques(ataque2, ataque1)
+	if len(ataque3) > 0 {
+        if !mismaLinea(ataque3) || len(ataque4) > 0 { // Tengo 2 lineas de 3, o 1 de 3 y otra de 4
+            return ataque3
+        }
+	}
+	if len(ataque2) > 0 {
+		return ataque2
+	}else if len(ataque1) > 0 {
+		return ataque1
+	}else if len(ataque4) > 0{
+		return ataque4
+	}else if len(defensa) > 0 {
+		return defensa
+	}
+	return espaciosVacios //no deberia pasar
 }
 
 // Funcion para comparar tableros
@@ -377,4 +393,55 @@ func X_enLinea(x int32, y int32, estado *pb.GameState, colorActual pb.PlayerColo
 		direcciones[c] = consecutivas
 	}
 	return direcciones
+}
+
+
+// Funcion que filtra el ataqueX quitandole los elementos del ataqueX+1
+func filtrarAtaques(ataqueX1, ataqueX2 []*pb.Point) []*pb.Point {
+	// Estructura para guardar los puntos
+	type Punto struct {
+		X, Y int32
+	}
+	mapa := make(map[Punto]struct{}, len(ataqueX1))
+	for _, p := range ataqueX1 {
+		if p != nil {
+			key := Punto{X: p.X, Y: p.Y}
+			mapa[key] = struct{}{}
+		}
+	}
+	n := 0
+	for _, p := range ataqueX2 {
+		if p == nil {
+			continue
+		}
+		key := Punto{X: p.X, Y: p.Y}
+		// Si los valores de ataqueX2 no están en ataqueX1, lo conservamos
+		if _, existe := mapa[key]; !existe {
+			ataqueX2[n] = p
+			n++
+		}
+	}
+	// 3. Limpieza de punteros
+	for i := n; i < len(ataqueX2); i++ {
+		ataqueX2[i] = nil
+	}
+	return ataqueX2[:n]
+}
+
+// Funcion que verifica si todos los puntos del slice son colineales
+func mismaLinea(puntos []*pb.Point) bool {
+	if len(puntos) < 3 {
+		return true
+	}
+	pA := puntos[0]
+	pB := puntos[1]
+	dx := int32(pB.X - pA.X)
+	dy := int32(pB.Y - pA.Y)
+	for i := 2; i < len(puntos); i++ {
+		pC := puntos[i]
+		if dy*int32(pC.X-pA.X) != dx*int32(pC.Y-pA.Y) {// Aplicamos el producto cruzado
+			return false // Si la multiplicación no da igual, el punto NO está en la línea
+		}
+	}
+	return true // Los puntos son colineales
 }

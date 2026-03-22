@@ -8,7 +8,6 @@ import (
 // Creamos el arbol a nivel de paquete para que NO pierda la memoria entre turnos.
 var tree = NuevoTree()
 
-// Modo defensa
 func Jugar(estado *pb.GameState, turnos int32) []*pb.Point {
     
 	if estado.Board[9].Cells[9] == pb.PlayerColor_UNKNOWN{	// Jugamos en el centro
@@ -18,7 +17,7 @@ func Jugar(estado *pb.GameState, turnos int32) []*pb.Point {
 		time.Sleep(500*time.Millisecond)
 		return []*pb.Point{&pb.Point{X: int32(9), Y: int32(10)},}
 	}
-	
+
 	//Llamamos a MCTS a través de nuestro bot
 	jugada := tree.MCTS(estado, estado.MyColor, turnos)
 	return jugada
@@ -54,8 +53,9 @@ func Jaque(estado *pb.GameState, colorRival pb.PlayerColor, alineadas int, x, y 
 	return trancar
 }
 
-// Funcion que verifica si el rival puede llegar a 6 fichas consecutivas a un lado de las 4 o 5 que ya tiene o en medio
+// Funcion que verifica si el rival puede llegar a 6 fichas consecutivas a un lado de las que ya tiene o en medio
 // devuelve la posicion x,y a jugar para trancar o nil si ya fue trancaso (no hay jaque)
+// Util tambien para definir jugadas a favor
 func tieneEspacioPara6(estado *pb.GameState, colorRival pb.PlayerColor, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5 int32) []*pb.Point{
 	if 	x1 >= 0 && x1 < 19 && y1 >= 0 && y1 < 19 && x2 >= 0 && x2 < 19 && y2 >= 0 && y2 < 19 && x3 >= 0 && x3 < 19 && y3 >= 0 && y3 < 19 &&
 		x4 >= 0 && x4 < 19 && y4 >= 0 && y4 < 19 && x5 >= 0 && x5 < 19 && y5 >= 0 && y5 < 19 &&
